@@ -1,0 +1,15 @@
+{
+  "name": "yunyin-player-pv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "云音 · 仿网易云播放器 + 一图流字幕 PV 制作工具（可选网易云歌词解析代理）",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

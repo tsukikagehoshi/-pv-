@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>云音 · 播放器 & 一图流字幕 PV 工具</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="bgBlur"></div>
+
+  <header>
+    <div class="logo"><span class="dot">♪</span> 云音</div>
+    <div class="switch">
+      <button id="tabPlayer" class="active">播放器</button>
+      <button id="tabPV">一图流字幕 PV</button>
+    </div>
+    <div class="grow"></div>
+    <button class="top-btn" id="openModal">＋ 导入 / 编辑</button>
+  </header>
+
+  <main>
+    <!-- ===== 播放器视图 ===== -->
+    <section id="playerView" class="active">
+      <div class="pl-left">
+        <div class="disc-wrap">
+          <svg class="tonearm" id="tonearm" viewBox="0 0 150 150">
+            <g transform="rotate(22 125 25)">
+              <!-- 唱臂杆：从右上枢轴斜向左下 -->
+              <rect x="121" y="25" width="8" height="104" rx="4" fill="#3a3a3a" stroke="#555" stroke-width="1"/>
+              <!-- 唱头 -->
+              <rect x="112" y="126" width="26" height="16" rx="3" fill="#888"/>
+            </g>
+            <!-- 枢轴（固定不随臂旋转的底座与轴心） -->
+            <circle cx="125" cy="25" r="15" fill="#2a2a2a" stroke="#555" stroke-width="2"/>
+            <circle cx="125" cy="25" r="6" fill="#777"/>
+          </svg>
+          <div class="disc" id="disc"><div class="cover" id="discCover"></div></div>
+        </div>
+        <div class="pl-meta">
+          <h1 id="mTitle">未选择歌曲</h1>
+          <div class="tags" id="mTags"></div>
+        </div>
+      </div>
+      <div class="pl-right">
+        <div id="lyricBox"><div class="lyric-empty">导入音频与歌词后在此显示</div></div>
+        <div class="pl-export">
+          <button class="btn-ghost" id="exportPlayer">● 录制并导出播放器视频（.webm）</button>
+          <span class="status" id="plStatus"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PV 视图 ===== -->
+    <section id="pvView" class="view">
+      <div class="pv-stage-wrap">
+        <div class="pv-canvas-box">
+          <canvas id="pvCanvas" width="1280" height="720"></canvas>
+          <div id="pvOverlay"></div>
+        </div>
+        <!-- 独立时间轴：精细定位播放头 -->
+        <div id="tlBar">
+          <div class="tl-transport">
+            <button id="tlPlay" title="播放/暂停">▶</button>
+            <button id="tlF1" title="后退 1 秒">«1s</button>
+            <button id="tlFp1" title="后退 0.1 秒">«.1</button>
+            <button id="tlFrmB" title="上一帧 (1/30s)">‹</button>
+            <span id="tlTime" class="tl-time">0.00s</span>
+            <button id="tlFrmF" title="下一帧 (1/30s)">›</button>
+            <button id="tlNp1" title="前进 0.1 秒">.1»</button>
+            <button id="tlN1" title="前进 1 秒">1s»</button>
+            <span id="tlDur" class="tl-dur">/ 0.00s</span>
+          </div>
+          <div id="tlTrack" class="tl-track">
+            <div id="tlFill" class="tl-fill"></div>
+            <div id="tlHead" class="tl-head"></div>
+            <div id="tlTicks" class="tl-ticks"></div>
+          </div>
+        </div>
+      </div>
+      <aside class="pv-side">
+        <h3>画幅</h3>
+        <div class="seg" id="aspect">
+          <button data-v="16:9" class="on">16:9 横屏</button>
+          <button data-v="9:16">9:16 竖屏</button>
+          <button data-v="1:1">1:1 方形</button>
+        </div>
+        <div class="aspect-tip">竖屏适合手机端短视频，横屏适合 B 站 / YouTube。</div>
+
+        <h3>字幕字体</h3>
+        <div class="ctl-row"><span>字号</span><b id="fsVal">62</b></div>
+        <input type="range" id="fs" min="24" max="120" value="62" style="width:100%" />
+        <div class="ctl-row"><span>字重</span></div>
+        <div class="seg" id="fw">
+          <button data-v="400">常规</button>
+          <button data-v="700" class="on">加粗</button>
+          <button data-v="900">特粗</button>
+        </div>
+        <div class="ctl-row"><span>垂直位置</span><b id="posVal">86%</b></div>
+        <input type="range" id="lyPos" min="10" max="92" value="86" style="width:100%" />
+        <div class="mini-color"><input type="color" id="lyColor" value="#ffffff" /> 主色
+          <input type="color" id="lyStroke" value="#000000" style="margin-left:12px" /> 描边</div>
+        <div class="ctl-row"><span>描边粗细</span><b id="stVal">6</b></div>
+        <input type="range" id="stroke" min="0" max="20" value="6" style="width:100%" />
+
+        <h3>字幕排版</h3>
+        <div class="ctl-row"><span>方向</span></div>
+        <div class="seg" id="lyOrient">
+          <button data-v="h" class="on">横排</button>
+          <button data-v="v">竖排</button>
+        </div>
+        <div class="seg" id="lyLayout" style="margin-top:6px">
+          <button data-v="center" class="on">居中</button>
+          <button data-v="template">版式模板</button>
+          <button data-v="alt">左右交替</button>
+        </div>
+        <div class="seg" id="lyLayout2" style="margin-top:6px">
+          <button data-v="random">随机跳位</button>
+          <button data-v="kinetic">逐词错落</button>
+        </div>
+        <div class="ctl-row" style="margin-top:8px"><span>字幕旋转</span><b id="lyRotVal">0°</b></div>
+        <input type="range" id="lyRot" min="-1440" max="1440" value="0" style="width:100%" />
+        <div class="hint">版式模板=网易云动效歌词那种设计排版；字幕旋转对居中/交替/随机/竖排生效。</div>
+        <button class="btn-ghost" id="splitLyric" style="width:100%;margin-top:8px">✂ 把当前句拆成逐字元素（可各自拖动/旋转/缩放/打关键帧）</button>
+
+        <div class="insp-sub" style="margin-top:12px">字幕整体关键帧（位移/缩放/旋转）</div>
+        <div class="ctl-row"><span>缩放</span><b id="lykScaleVal">1.00×</b></div>
+        <input type="range" id="lykScale" min="20" max="300" value="100" style="width:100%" />
+        <div class="ctl-row"><span>水平位移</span><b id="lykXVal">0%</b></div>
+        <input type="range" id="lykX" min="-50" max="50" value="0" style="width:100%" />
+        <div class="ctl-row"><span>垂直位移</span><b id="lykYVal">0%</b></div>
+        <input type="range" id="lykY" min="-50" max="50" value="0" style="width:100%" />
+        <div class="ctl-row"><span>旋转</span><b id="lykRotVal">0°</b></div>
+        <input type="range" id="lykRot" min="-1440" max="1440" value="0" style="width:100%" />
+        <div class="kf-btns" id="lykBtns">
+          <button data-p="scale">◆ 缩放</button>
+          <button data-p="x">◆ 水平</button>
+          <button data-p="y">◆ 垂直</button>
+          <button data-p="rot">◆ 旋转</button>
+          <button data-p="all">◆ 全部</button>
+          <button id="lykClear">✕ 清空</button>
+        </div>
+        <div class="hint">拖时间轴到某时刻 → 调上面滑块 → ◆ 打点。让整句字幕做移动/缩放/旋转动画。</div>
+        <div id="lykList" class="kf-list"></div>
+
+        <div id="tplBox" style="display:none">
+          <h3>版式模板样式</h3>
+          <div class="seg" id="tplName">
+            <button data-v="plate" class="on">字底板</button>
+            <button data-v="accent">关键字强调</button>
+            <button data-v="stagger">错落阶梯</button>
+          </div>
+          <div class="seg" id="tplName2" style="margin-top:6px">
+            <button data-v="boxed">框字</button>
+            <button data-v="magazine">杂志封面</button>
+          </div>
+          <div class="ctl-row" style="margin-top:8px"><span>整体缩放</span><b id="tplScaleVal">1.0×</b></div>
+          <input type="range" id="tplScale" min="50" max="180" value="100" style="width:100%" />
+          <div class="ctl-row"><span>错落强度</span><b id="tplScatterVal">100%</b></div>
+          <input type="range" id="tplScatter" min="0" max="200" value="100" style="width:100%" />
+          <div class="ctl-row"><span>首字/关键词放大</span><b id="tplBigVal">2.2×</b></div>
+          <input type="range" id="tplBig" min="120" max="360" value="220" style="width:100%" />
+          <div class="hint">配色沿用上面「字幕字体」的主色/描边和「底板颜色」。</div>
+        </div>
+
+        <h3>字幕底板（特效字幕）</h3>
+        <div class="seg" id="lyBackdrop">
+          <button data-v="none" class="on">无</button>
+          <button data-v="bar">色条</button>
+          <button data-v="box">方框</button>
+        </div>
+        <div class="seg" id="lyBackdrop2" style="margin-top:6px">
+          <button data-v="block">色块</button>
+          <button data-v="line">上下线</button>
+        </div>
+        <div class="mini-color"><input type="color" id="lyBdColor" value="#ec4141" /> 底板颜色</div>
+
+        <h3>字幕入场动效（AE 风）</h3>
+        <div class="seg" id="lyAnim">
+          <button data-v="fade" class="on">淡入</button>
+          <button data-v="rise">上浮</button>
+          <button data-v="scale">弹缩</button>
+          <button data-v="blur">聚焦</button>
+        </div>
+        <div class="seg" id="lyAnim2" style="margin-top:6px">
+          <button data-v="typewriter">逐字打字</button>
+          <button data-v="wordpop">逐字弹出</button>
+          <button data-v="slide">侧滑</button>
+          <button data-v="none">无</button>
+        </div>
+        <div class="ctl-row" style="margin-top:8px"><span>入场时长</span><b id="animDurVal">0.5s</b></div>
+        <input type="range" id="animDur" min="0.1" max="1.5" step="0.1" value="0.5" style="width:100%" />
+
+        <h3>字幕卡点脉冲</h3>
+        <label class="chk"><input type="checkbox" id="lyBeat" checked /> 跟节拍轻微放大</label>
+        <div class="ctl-row"><span>脉冲强度</span><b id="beatAmpVal">6%</b></div>
+        <input type="range" id="beatAmp" min="0" max="20" value="6" style="width:100%" />
+
+        <h3>节拍（卡点用）</h3>
+        <div class="ctl-row"><span>BPM 速度</span><b id="bpmVal">120</b></div>
+        <input type="range" id="bpm" min="60" max="200" value="120" style="width:100%" />
+        <div class="hint">播放音乐，跟着节拍连续点下面的按钮（至少 4 下），自动算出 BPM 并把起点定在第一下。停 2 秒自动重新开始。</div>
+        <button class="btn-ghost" id="tapBeat" style="width:100%;margin-top:8px">👆 跟拍点击测 BPM</button>
+
+        <h3>画面 · 背景运镜</h3>
+        <div class="ctl-row"><span>自动运镜幅度</span><b id="camAmpVal">适中</b></div>
+        <input type="range" id="camAmp" min="0" max="100" value="35" style="width:100%" />
+        <div class="hint">没打关键帧、也没手动调下面位姿时，用这个自动缓慢运镜。</div>
+
+        <div class="insp-sub" style="margin-top:12px">手动位姿（可打关键帧做推拉/位移/旋转）</div>
+        <div class="ctl-row"><span>缩放</span><b id="camScaleVal">1.00×</b></div>
+        <input type="range" id="camScale" min="50" max="300" value="100" style="width:100%" />
+        <div class="ctl-row"><span>水平位移</span><b id="camXVal">0%</b></div>
+        <input type="range" id="camX" min="-50" max="50" value="0" style="width:100%" />
+        <div class="ctl-row"><span>垂直位移</span><b id="camYVal">0%</b></div>
+        <input type="range" id="camY" min="-50" max="50" value="0" style="width:100%" />
+        <div class="ctl-row"><span>旋转</span><b id="camRotVal">0°</b></div>
+        <input type="range" id="camRot" min="-1440" max="1440" value="0" style="width:100%" />
+        <div class="kf-btns" id="camKfBtns">
+          <button data-p="scale" title="记录缩放">◆ 缩放</button>
+          <button data-p="x" title="记录水平">◆ 水平</button>
+          <button data-p="y" title="记录垂直">◆ 垂直</button>
+          <button data-p="rot" title="记录旋转">◆ 旋转</button>
+          <button data-p="all" title="记录全部">◆ 全部</button>
+          <button id="camKfClear" title="清空运镜关键帧">✕ 清空</button>
+        </div>
+        <div class="hint">拖底部进度条到某时刻 → 调上面滑块（画面实时预览）→ 点 ◆ 打点。至少两帧成动画。缓动用「关键帧动画」里选的那种。</div>
+        <div id="camKfList" class="kf-list"></div>
+
+        <div class="ctl-row" style="margin-top:10px"><span>背景暗化</span><b id="dimVal">30%</b></div>
+        <input type="range" id="dim" min="0" max="80" value="30" style="width:100%" />
+
+        <h3>整体特效</h3>
+        <label class="chk"><input type="checkbox" id="fxFlash" /> 卡点闪白（轻）</label>
+        <label class="chk"><input type="checkbox" id="fxGrain" /> 颗粒 / 暗角</label>
+        <label class="chk"><input type="checkbox" id="fxTitle" checked /> 开头显示标题</label>
+
+        <h3>矢量图形装饰（AE 风）</h3>
+        <div class="mini-color"><input type="color" id="decoColor" value="#ec4141" /> 强调色</div>
+        <label class="chk"><input type="checkbox" id="dcUnderline" checked /> 字幕下划线（随字幕展开）</label>
+        <label class="chk"><input type="checkbox" id="dcBrackets" /> 字幕角括号</label>
+        <label class="chk"><input type="checkbox" id="dcBeatDots" /> 卡点圆点 / 圆环（四角）</label>
+        <label class="chk"><input type="checkbox" id="dcParticles" /> 漂浮粒子</label>
+        <label class="chk"><input type="checkbox" id="dcGrid" /> 点阵网格</label>
+        <label class="chk"><input type="checkbox" id="dcFrame" /> 安全边框 + 角标</label>
+        <label class="chk"><input type="checkbox" id="dcProgress" checked /> 底部进度条</label>
+        <label class="chk"><input type="checkbox" id="dcCrosshair" /> 中心十字准星</label>
+        <label class="chk"><input type="checkbox" id="dcCorners" /> 四角取景框标记</label>
+        <label class="chk"><input type="checkbox" id="dcScanline" /> 扫描线（上下移动）</label>
+        <label class="chk"><input type="checkbox" id="dcSidebars" /> 两侧竖边条</label>
+        <div class="ctl-row"><span>粒子 / 网格密度</span><b id="decoDenVal">中</b></div>
+        <input type="range" id="decoDen" min="0" max="100" value="50" style="width:100%" />
+
+        <h3>大面积矢量动效（铺满画面）</h3>
+        <div class="mini-color"><input type="color" id="fxbColor" value="#ec4141" /> 颜色</div>
+        <div class="ctl-row"><span>层级</span></div>
+        <div class="seg" id="fxbLayer">
+          <button data-v="back" class="on">字幕之后</button>
+          <button data-v="front">字幕之前</button>
+        </div>
+        <div class="shape-grid" style="grid-template-columns:repeat(2,1fr);margin-top:8px">
+          <label class="chk"><input type="checkbox" id="fxbRings" /> 扩散圆环</label>
+          <label class="chk"><input type="checkbox" id="fxbRays" /> 旋转放射</label>
+          <label class="chk"><input type="checkbox" id="fxbBlinds" /> 滚动百叶</label>
+          <label class="chk"><input type="checkbox" id="fxbDiag" /> 斜纹滚动</label>
+          <label class="chk"><input type="checkbox" id="fxbGridwave" /> 网格波动</label>
+          <label class="chk"><input type="checkbox" id="fxbPolys" /> 漂浮多边形</label>
+          <label class="chk"><input type="checkbox" id="fxbHalftone" /> 半调点阵</label>
+          <label class="chk"><input type="checkbox" id="fxbBars" /> 律动条</label>
+          <label class="chk"><input type="checkbox" id="fxbFrames" /> 边框脉冲</label>
+          <label class="chk"><input type="checkbox" id="fxbSweep" /> 光束扫过</label>
+          <label class="chk"><input type="checkbox" id="fxbBlocks" /> 随机方块</label>
+          <label class="chk"><input type="checkbox" id="fxbGlitch" /> 故障条</label>
+          <label class="chk"><input type="checkbox" id="fxbBurst" /> 多边形爆发</label>
+          <label class="chk"><input type="checkbox" id="fxbScatter" /> 随机散布</label>
+        </div>
+        <div class="ctl-row"><span>强度</span><b id="fxbIntVal">60%</b></div>
+        <input type="range" id="fxbInt" min="0" max="100" value="60" style="width:100%" />
+        <div class="ctl-row"><span>粗细</span><b id="fxbWeightVal">1.0×</b></div>
+        <input type="range" id="fxbWeight" min="20" max="400" value="100" style="width:100%" />
+        <div class="ctl-row"><span>大小</span><b id="fxbSizeVal">1.0×</b></div>
+        <input type="range" id="fxbSize" min="30" max="250" value="100" style="width:100%" />
+        <div class="ctl-row"><span>不透明度</span><b id="fxbOpVal">100%</b></div>
+        <input type="range" id="fxbOp" min="0" max="100" value="100" style="width:100%" />
+
+        <h3>画面滤镜 / 整体特效</h3>
+        <div class="shape-grid" style="grid-template-columns:repeat(2,1fr)">
+          <label class="chk"><input type="checkbox" id="ftVignette" /> 暗角</label>
+          <label class="chk"><input type="checkbox" id="ftGlow" /> 柔光泛光</label>
+          <label class="chk"><input type="checkbox" id="ftScanlines" /> 扫描线 CRT</label>
+          <label class="chk"><input type="checkbox" id="ftNoise" /> 噪点颗粒</label>
+          <label class="chk"><input type="checkbox" id="ftTint" /> 色调叠色</label>
+          <label class="chk"><input type="checkbox" id="ftDuotone" /> 双色调</label>
+          <label class="chk"><input type="checkbox" id="ftInvert" /> 负片反相</label>
+          <label class="chk"><input type="checkbox" id="ftChromatic" /> 色差错位</label>
+          <label class="chk"><input type="checkbox" id="ftOldfilm" /> 老电影</label>
+          <label class="chk"><input type="checkbox" id="ftLetterbox" /> 影院黑边</label>
+          <label class="chk"><input type="checkbox" id="ftBlur" /> 柔焦模糊</label>
+          <label class="chk"><input type="checkbox" id="ftWarm" /> 暖色调</label>
+          <label class="chk"><input type="checkbox" id="ftCool" /> 冷色调</label>
+          <label class="chk"><input type="checkbox" id="ftSepia" /> 复古褐</label>
+          <label class="chk"><input type="checkbox" id="ftLightleak" /> 漏光</label>
+        </div>
+        <div class="mini-color"><input type="color" id="ftTintColor" value="#2a3a6a" /> 叠色/双色调颜色</div>
+        <div class="ctl-row"><span>滤镜强度</span><b id="ftIntVal">60%</b></div>
+        <input type="range" id="ftInt" min="0" max="100" value="60" style="width:100%" />
+
+        <h3>图形元素（自由布置 + 独立动效）</h3>
+        <div class="hint">点下面任意图形添加，直接在左侧画面里拖动定位；点列表选中后在下方调属性与动效。</div>
+        <div class="shape-grid" id="shapeAdd"></div>
+        <div id="elemList" class="elem-list"></div>
+
+        <div id="inspector" class="inspector" style="display:none">
+          <div class="insp-head">
+            <span id="inspTitle">元素</span>
+            <span class="insp-del" id="elemDel">删除</span>
+          </div>
+          <div class="ctl-row"><span>填充</span>
+            <label class="chk" style="margin:0"><input type="checkbox" id="eFillOn" checked /></label>
+            <input type="color" id="eFill" value="#ec4141" style="width:34px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none" />
+          </div>
+          <div class="ctl-row"><span>描边</span>
+            <input type="color" id="eStroke" value="#ffffff" style="width:34px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none" />
+            <input type="range" id="eStrokeW" min="0" max="24" value="0" style="flex:1" />
+          </div>
+          <div class="ctl-row"><span>大小</span><b id="eSizeVal">120</b></div>
+          <input type="range" id="eSize" min="8" max="800" value="120" style="width:100%" />
+          <div class="ctl-row"><span>不透明度</span><b id="eOpVal">100%</b></div>
+          <input type="range" id="eOp" min="0" max="100" value="100" style="width:100%" />
+          <div class="ctl-row"><span>旋转</span><b id="eRotVal">0°</b></div>
+          <input type="range" id="eRot" min="-1440" max="1440" value="0" style="width:100%" />
+
+          <div class="insp-sub">关键帧动画（在播放头位置打点）</div>
+          <div class="ctl-row"><span>缓动</span></div>
+          <div class="seg" id="kfEase">
+            <button data-v="linear">匀速</button>
+            <button data-v="in">慢入</button>
+            <button data-v="out" class="on">慢出</button>
+            <button data-v="inout">缓入缓出</button>
+          </div>
+          <div class="kf-btns">
+            <button data-p="x" title="记录当前 X 位置">◆ X</button>
+            <button data-p="y" title="记录当前 Y 位置">◆ Y</button>
+            <button data-p="scale" title="记录当前缩放">◆ 缩放</button>
+            <button data-p="rot" title="记录当前旋转">◆ 旋转</button>
+            <button data-p="op" title="记录当前透明度">◆ 透明</button>
+            <button data-p="all" title="一次记录全部 5 个属性">◆ 全部</button>
+          </div>
+          <div class="hint" id="kfHint">用法：拖底部歌曲进度条到某时刻 → 拖动画面里的图形/调滑块（画面实时预览）→ 点上面 ◆ 记录关键帧。至少两帧才有动画。</div>
+          <div id="kfList" class="kf-list"></div>
+          <button class="btn-ghost" id="kfClear" style="width:100%;margin-top:6px;font-size:12px">清空该元素所有关键帧</button>
+
+          <div class="ctl-row"><span>层级</span></div>
+          <div class="seg" id="eLayer">
+            <button data-v="back">背景层</button>
+            <button data-v="mid" class="on">字幕之下</button>
+            <button data-v="front">最上层</button>
+          </div>
+
+          <div class="insp-sub">动效（可叠加）</div>
+          <label class="chk"><input type="checkbox" id="aPulse" /> 卡点脉冲（随拍放大）</label>
+          <label class="chk"><input type="checkbox" id="aSpin" /> 持续旋转</label>
+          <label class="chk"><input type="checkbox" id="aShake" /> 抖动</label>
+          <label class="chk"><input type="checkbox" id="aFloat" /> 漂浮（缓慢位移）</label>
+          <label class="chk"><input type="checkbox" id="aBreath" /> 呼吸（缩放起伏）</label>
+          <label class="chk"><input type="checkbox" id="aFlicker" /> 闪烁（透明度）</label>
+          <div class="ctl-row" style="margin-top:6px"><span>动效强度</span><b id="aAmpVal">50%</b></div>
+          <input type="range" id="aAmp" min="0" max="100" value="50" style="width:100%" />
+          <div class="ctl-row"><span>动效速度</span><b id="aSpdVal">1.0×</b></div>
+          <input type="range" id="aSpd" min="10" max="400" value="100" style="width:100%" />
+          <div class="insp-sub">出现时机</div>
+          <div class="seg" id="eWhen">
+            <button data-v="always" class="on">全程</button>
+            <button data-v="lyric">跟当前字幕</button>
+          </div>
+        </div>
+
+        <h3>导出</h3>
+        <div class="hint">实时录制画面+音频为 .webm（时长=歌曲长度）。</div>
+        <button class="btn-primary" id="exportWebm" style="margin-top:8px">● 录制并导出 PV（.webm）</button>
+        <div class="status" id="pvStatus"></div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- ===== 底部控制条 ===== -->
+  <div id="bar">
+    <div class="mini" id="barCover"></div>
+    <div class="info"><div class="n" id="barName">—</div><div class="a" id="barArtist"></div></div>
+    <div class="ctrls">
+      <button class="ic" id="prev10" title="后退10秒">«</button>
+      <button class="ic play" id="playBtn">▶</button>
+      <button class="ic" id="next10" title="前进10秒">»</button>
+    </div>
+    <div class="prog">
+      <span id="cur">0:00</span>
+      <div class="track" id="track"><div class="fill" id="fill"></div><div class="knob" id="knob"></div></div>
+      <span id="dur">0:00</span>
+    </div>
+    <div class="vol">
+      <span>🔊</span>
+      <div class="track" id="volTrack" style="height:5px"><div class="fill" id="volFill" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <!-- ===== 导入弹窗 ===== -->
+  <div id="modal">
+    <div class="modal-card">
+      <h2>导入 / 编辑</h2>
+      <div class="desc">上传音频（必选）、封面图、LRC 歌词；或粘贴网易云分享链接自动解析歌词与原唱信息。素材在播放器和 PV 两个模式间共享，导入一次即可。</div>
+
+      <div id="sharedBadge" class="shared-badge" style="display:none">✓ 已载入素材，播放器与 PV 共用这份数据</div>
+
+      <div class="netease-box">
+        <label style="display:block;font-size:13px;margin-bottom:8px;font-weight:600">🎵 网易云链接自动解析歌词</label>
+        <div class="flex">
+          <input type="text" id="neUrl" class="field" placeholder="粘贴分享链接 / 歌曲ID，如 https://music.163.com/song?id=..." style="padding:9px 11px" />
+          <button class="btn-ghost" id="neGo">解析</button>
+        </div>
+        <div class="status" id="neStatus"></div>
+        <div class="hint warn">翻唱 PV 场景：只解析<b>歌词</b>与<b>原唱</b>（原曲演唱者）。需通过 <b>node server.js</b> 启动后使用。封面与音频请用你自己的翻唱素材手动上传。</div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>音频文件 *</label>
+          <div class="drop" id="dropAudio">点击选择音频</div>
+          <input type="file" id="fAudio" accept="audio/*" hidden />
+        </div>
+        <div class="field">
+          <label>封面 / 背景图片</label>
+          <div class="drop" id="dropImg">点击选择图片</div>
+          <input type="file" id="fImg" accept="image/*" hidden />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>LRC 歌词文件（可选，或直接粘贴到下方文本框）</label>
+        <div class="drop" id="dropLrc">点击选择 .lrc 文件</div>
+        <input type="file" id="fLrc" accept=".lrc,text/plain" hidden />
+      </div>
+      <div class="field">
+        <label>歌词文本（LRC 格式，可编辑）</label>
+        <textarea id="lrcText" placeholder="[00:00.00]示例歌词&#10;[00:03.50]支持一行多时间戳与翻译"></textarea>
+      </div>
+
+      <div class="row2">
+        <div class="field"><label>歌曲名</label><input type="text" id="iTitle" placeholder="歌曲名称" /></div>
+        <div class="field"><label>翻唱 / 演唱</label><input type="text" id="iArtist" placeholder="翻唱者" /></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>原唱</label><input type="text" id="iOrigin" placeholder="原曲演唱者（解析自动填）" /></div>
+        <div class="field"><label>专辑</label><input type="text" id="iAlbum" placeholder="专辑（可留空）" /></div>
+      </div>
+
+      <button class="btn-primary" id="applyBtn">应用</button>
+      <button class="btn-ghost" id="closeModal" style="width:100%;margin-top:10px">关闭</button>
+    </div>
+  </div>
+
+<!-- 播放器录制用的离屏 canvas（不显示） -->
+<canvas id="playerCanvas" width="1280" height="720" style="display:none"></canvas>
+<audio id="audio" crossorigin="anonymous"></audio>
+
+<script src="app.js"></script>
+</body>
+</html>
